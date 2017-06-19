@@ -21,7 +21,7 @@ def transformSusRecord2Xls():
 def transformSusRecord2Csv(records):
     csvStr = ""
     if len(records) > 0:
-        csvStr = "identity_card,student_name,study_center_name,enroll_school,major,enroll_arrangement\n"
+        csvStr = "identity_card,student_name,study_center_name,enroll_school,major,enroll_arrangement,input_date\n"
         
         for ids,rec1 in records.items():
             csvStr = csvStr + "'" + ids + "',"
@@ -29,7 +29,8 @@ def transformSusRecord2Csv(records):
             csvStr = csvStr + rec1.get("study_center_name","") + ","
             csvStr = csvStr + rec1.get("enroll_school","") + ","
             csvStr = csvStr + rec1.get("major","") + ","
-            csvStr = csvStr + rec1.get("enroll_arrangement","") + "\n"
+            csvStr = csvStr + rec1.get("enroll_arrangement","") + ","
+            csvStr = csvStr + rec1.get("input_date","") + "\n"
             print(csvStr)
     else:
         pass
@@ -69,9 +70,15 @@ reduplicative = {}
 nonIds = 0
 
 #load data from xfu
-sql = "select s.student_name,s.identity_card,se.study_center_name,se.enroll_school,se.major,se.enroll_arrangement from student as s "
-sql = sql + "left join student_enroll as se on s.student_id=se.student_id where 1=1 and s.is_delete_flag is null "
-sql = sql + "and s.enroll_batch='1703' order by s.identity_card desc"
+sql = "select batch_name,batch_id from batch where is_current='1'"
+rows = selectFromDB(db4xf,sql)
+currentBatch = rows[0][0]
+reload(sys)  
+sys.setdefaultencoding('utf8')   
+
+sql = "select s.student_name,s.identity_card,se.study_center_name,se.enroll_school,se.major,se.enroll_arrangement,se.input_date from student as s "
+sql = sql + "left join student_enroll as se on s.student_id=se.student_id where 1=1 and (s.is_delete_flag is null or s.is_delete_flag='1') "
+sql = sql + "and s.enroll_batch='" + currentBatch + "' order by s.identity_card desc"
 #print(sql)
 print("get data from xuefu database...")
 rows = selectFromDB(db4xf,sql)
@@ -117,6 +124,10 @@ for i in xrange(0,len(rows) - 1):
             rec["enroll_arrangement"] = ""
         else:
             rec["enroll_arrangement"] = row1[5]
+        if row1[6] == None:
+            rec["input_date"] = ""
+        else:
+            rec["input_date"] = row1[6]
         reduplicative[idCard1] = rec
         tmpstr = idCard1 + "/" + rec["student_name"]+"/"+rec["study_center_name"]+"/"+rec["enroll_school"]+"/"+rec["major"]+"/"+rec["enroll_arrangement"]
         #print(tmpstr)

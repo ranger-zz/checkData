@@ -468,10 +468,11 @@ def checkUnmatchFile(srcFile,ids,xlsrows,dsrows2C,xfrows2C,memoRows,columnName,c
 	print("get the records from xuefu... ")
 	sql = "select s.enroll_batch,se.study_center_name,se.enroll_school,se.enroll_arrangement,se.major,s.student_name,s.identity_card,"
 	sql = sql + "s.enrollment_study_center,se.enrollment_people,se.student_source,s.project_type,se.enroll_date,se.manage_type,"
-	sql = sql + "se.manage_study_center,se.service_center,se.department,s.refer_student_id,se.input_date "
-	sql = sql + "from student as s left join student_enroll as se on s.student_id=se.student_id where "
+	sql = sql + "se.manage_study_center,se.service_center,se.department,s1.student_name,s1.enroll_batch,s1.identity_card,se.input_date "
+	sql = sql + "from student as s left join student_enroll as se on s.student_id=se.student_id "
+	sql = sql + "left join student as s1 on s.refer_student_id=s1.student_id " + "where "
 	sql = sql + "s.enroll_batch='" + glovar.currentBatch + "' "
-	sql = sql + "and s.is_delete_flag is null "
+	sql = sql + "and (s.is_delete_flag is null or s.is_delete_flag='1') "
 	sql = sql + "and s.identity_card in("
 	for i in xrange(0,len(ids)):
 		sql = sql + "'" + ids[i] + "',"
@@ -488,6 +489,7 @@ def checkUnmatchFile(srcFile,ids,xlsrows,dsrows2C,xfrows2C,memoRows,columnName,c
 		tmprow.append("xf")
 		for j in xrange(0,len(row)):
 			#6 columns ahead are in sequence of the colunmdefinition
+			'''
 			if j == 16:
 				#refer_student_id
 				if row[j] != None or row[j] == "":
@@ -501,13 +503,14 @@ def checkUnmatchFile(srcFile,ids,xlsrows,dsrows2C,xfrows2C,memoRows,columnName,c
 					tmprow.append("")
 					tmprow.append("")
 			else:
-				value = row[j]
-				if (j>0 and j<6) or (j>6 and j<11) or (j>11 and j<16):
-					if value!=None:
-						value = value
-					else :
-						value = ""
-				tmprow.append(value)
+			'''
+			value = row[j]
+			if (j>0 and j<6) or (j>6 and j<11) or (j>11 and j<19):
+				if value!=None:
+					value = value
+				else :
+					value = ""
+			tmprow.append(value)
 		#print(transFromList2Str(columnName,columnType,tmprow))
 		xfrows.append(tmprow)
 	print("")
@@ -618,8 +621,11 @@ def verifyStudentField(xlsrows,dsrows2C,xfrows2C,memoRows,checkType):
 				continue
 			xfrows2C[i][0] = "xf"
 			ep_xf = xfrows2C[i][indexofEP]
+			ss_xf = xfrows2C[i][indexofSS]
 			if ifValueEmpty(ep_xf)==0:#no a null
 				memoRows[i][1] = "该学员已经完成导入匹配"
+				if ifValueEmpty(ss_xf)>0:
+					memoRows[i][1] = memoRows[i][1] + "/Null Student Source" 
 				continue
 		#check project type
 		pt = row[indexofPT]
@@ -1223,7 +1229,10 @@ def updateChannel():
 					uid = recs[0][0]
 					sql = "update channel set user_id=" + str(uid) + ",docking_people_id=" + str(uid) + " where channel_name='" + name + "'"
 					sqls.append(sql)
-					sql = "update student_enroll set enrollment_people='" + val + "' where student_source='" + name + "'"
+					sql = "update student_enroll set enrollment_people='" + val + "' where student_id in (select s.student_id from "
+					sql = sql + "student AS s LEFT JOIN student_enroll AS se ON s.student_id = se.student_id where s.enroll_batch='" + glovar.currentBatch + "' "
+					sql = sql + "and se.student_source='" + name + "')"
+					print(sql)
 					sqls.append(sql)
 			else:
 				sql = "update channel_protocol set " + field + "='" + val + "' where channel_name='" + name + "'"
